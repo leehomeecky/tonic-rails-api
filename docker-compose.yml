@@ -1,0 +1,66 @@
+name: tonic-rails
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tonicrails
+      POSTGRES_PASSWORD: tonicrails
+      POSTGRES_DB: tonicrails
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tonicrails -d tonicrails']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # Not published to the host: only the API talks to it, over the compose network.
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env.example
+    environment:
+      NODE_ENV: prod
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - '9000:9000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # `docker compose --profile test run --rm test` runs the full suite without local Node.
+  test:
+    profiles: ['test']
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - test_node_modules:/app/node_modules
+    environment:
+      TEST_DB_HOST: postgres
+      TEST_DB_PORT: '5432'
+      TEST_DB_USER: tonicrails
+      TEST_DB_PASSWORD: tonicrails
+      TEST_DB_NAME: tonicrails_test
+    command: sh -c "yarn install --frozen-lockfile && yarn test"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  test_node_modules:

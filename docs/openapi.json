@@ -1,0 +1,1665 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/fx/rates": {
+      "get": {
+        "operationId": "FxController_getRates_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FxRatesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Current conversion rates between every supported stablecoin",
+        "tags": [
+          "FX"
+        ]
+      }
+    },
+    "/api/v1/wallets": {
+      "post": {
+        "operationId": "WalletController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalletDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "WALLET_ALREADY_EXISTS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a wallet with exactly one of email or phone",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}": {
+      "get": {
+        "operationId": "WalletController_get_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a wallet and its balances",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}/balances": {
+      "get": {
+        "operationId": "WalletController_balances_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletBalancesResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "All balances plus their total equivalent in USD",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}/deposits": {
+      "post": {
+        "operationId": "WalletTransactionController_deposit_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique per logical request (UUID v4 recommended). Retries with the same key and body replay the original response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Simulated deposit of any supported stablecoin",
+        "tags": [
+          "Wallet transactions"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}/swaps": {
+      "post": {
+        "operationId": "WalletTransactionController_swap_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique per logical request (UUID v4 recommended). Retries with the same key and body replay the original response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwapDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INSUFFICIENT_FUNDS, AMOUNT_TOO_SMALL, IDEMPOTENCY_KEY_REUSED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Swap one stablecoin for another inside the same wallet",
+        "tags": [
+          "Wallet transactions"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}/transfers": {
+      "post": {
+        "operationId": "WalletTransactionController_transfer_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique per logical request (UUID v4 recommended). Retries with the same key and body replay the original response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send to another wallet; converts automatically when currencies differ",
+        "tags": [
+          "Wallet transactions"
+        ]
+      }
+    },
+    "/api/v1/wallets/{walletId}/transactions": {
+      "get": {
+        "operationId": "WalletTransactionController_history_v1",
+        "parameters": [
+          {
+            "name": "walletId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DEPOSIT",
+                "SWAP",
+                "TRANSFER"
+              ]
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "description": "Supported stablecoin",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cNGN",
+                "cGHS",
+                "cXAF",
+                "USDx",
+                "EURx"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 512,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Transaction history (sent and received), newest first, keyset-paginated",
+        "tags": [
+          "Wallet transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transactionId}": {
+      "get": {
+        "operationId": "TransactionController_getOne_v1",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "required": true,
+            "in": "path",
+            "description": "Transaction UUID or reference (e.g. TR-20261029-7F3K9QAB)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Fetch a single transaction by id or reference",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Liveness: the process is up",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Readiness: database reachable (Redis optional)",
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Tonic Rails API",
+    "description": "Multi-currency stablecoin wallet sandbox: wallets, deposits, swaps, cross-border transfers and FX rates. Amounts are decimal strings with up to 6 decimal places. Money-moving POSTs require an Idempotency-Key header.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "FxRatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "base": {
+                "type": "string",
+                "enum": [
+                  "cNGN",
+                  "cGHS",
+                  "cXAF",
+                  "USDx",
+                  "EURx"
+                ],
+                "description": "Supported stablecoin"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "LIVE",
+                  "LAST_KNOWN_GOOD",
+                  "STATIC"
+                ]
+              },
+              "provider": {
+                "type": "string"
+              },
+              "refreshedAt": {
+                "type": "string",
+                "description": "ISO-8601 UTC timestamp"
+              },
+              "isStale": {
+                "type": "boolean"
+              },
+              "rates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "to": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "rate": {
+                      "type": "string",
+                      "description": "Units of `to` per 1 unit of `from`"
+                    },
+                    "refreshedAt": {
+                      "type": "string",
+                      "description": "ISO-8601 UTC timestamp"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "rate",
+                    "refreshedAt"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "base",
+              "source",
+              "provider",
+              "refreshedAt",
+              "isStale",
+              "rates"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "data"
+        ]
+      },
+      "CreateWalletDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
+      },
+      "WalletResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "description": "ISO-8601 UTC timestamp"
+              },
+              "balances": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "available": {
+                      "type": "string",
+                      "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "available"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "phone",
+              "createdAt",
+              "balances"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "data"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "BAD_REQUEST",
+              "INVALID_ID",
+              "INVALID_PHONE",
+              "INVALID_CURSOR",
+              "IDEMPOTENCY_KEY_REQUIRED",
+              "IDEMPOTENCY_KEY_INVALID",
+              "SELF_TRANSFER_NOT_ALLOWED",
+              "SAME_CURRENCY_SWAP",
+              "ROUTE_NOT_FOUND",
+              "WALLET_NOT_FOUND",
+              "RECIPIENT_NOT_FOUND",
+              "TRANSACTION_NOT_FOUND",
+              "WALLET_ALREADY_EXISTS",
+              "IDEMPOTENCY_REQUEST_IN_PROGRESS",
+              "CONFLICT",
+              "PAYLOAD_TOO_LARGE",
+              "IDEMPOTENCY_KEY_REUSED",
+              "INSUFFICIENT_FUNDS",
+              "AMOUNT_TOO_SMALL",
+              "AMOUNT_LIMIT_EXCEEDED",
+              "RATE_LIMITED",
+              "INTERNAL_ERROR",
+              "FX_UNAVAILABLE",
+              "LEDGER_INVARIANT_VIOLATION"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "path": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp"
+          }
+        },
+        "required": [
+          "statusCode",
+          "code",
+          "message",
+          "path",
+          "timestamp"
+        ]
+      },
+      "WalletBalancesResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "walletId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "balances": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "available": {
+                      "type": "string",
+                      "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                    },
+                    "usdValue": {
+                      "type": "string",
+                      "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "available",
+                    "usdValue"
+                  ]
+                }
+              },
+              "totalUsd": {
+                "type": "string",
+                "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+              },
+              "rates": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "LIVE",
+                      "LAST_KNOWN_GOOD",
+                      "STATIC"
+                    ]
+                  },
+                  "refreshedAt": {
+                    "type": "string",
+                    "description": "ISO-8601 UTC timestamp"
+                  },
+                  "isStale": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "source",
+                  "refreshedAt",
+                  "isStale"
+                ]
+              }
+            },
+            "required": [
+              "walletId",
+              "balances",
+              "totalUsd",
+              "rates"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "data"
+        ]
+      },
+      "DepositDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": [
+              "cNGN",
+              "cGHS",
+              "cXAF",
+              "USDx",
+              "EURx"
+            ],
+            "description": "Supported stablecoin"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
+            "description": "Positive decimal string, at most 6 decimal places"
+          }
+        },
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "TransactionResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "DEPOSIT",
+                  "SWAP",
+                  "TRANSFER"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "COMPLETED",
+                  "FAILED"
+                ]
+              },
+              "direction": {
+                "description": "Relative to the wallet whose history is listed",
+                "type": "string",
+                "enum": [
+                  "IN",
+                  "OUT",
+                  "SELF"
+                ]
+              },
+              "walletId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "cNGN",
+                      "cGHS",
+                      "cXAF",
+                      "USDx",
+                      "EURx"
+                    ],
+                    "description": "Supported stablecoin"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amount"
+                ]
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "cNGN",
+                      "cGHS",
+                      "cXAF",
+                      "USDx",
+                      "EURx"
+                    ],
+                    "description": "Supported stablecoin"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amount"
+                ]
+              },
+              "fx": {
+                "type": "object",
+                "properties": {
+                  "rate": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "LIVE",
+                      "LAST_KNOWN_GOOD",
+                      "STATIC"
+                    ]
+                  },
+                  "snapshotId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "rate",
+                  "source",
+                  "snapshotId"
+                ],
+                "description": "Present when a currency conversion took place",
+                "nullable": true
+              },
+              "sender": {
+                "type": "object",
+                "properties": {
+                  "walletId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Masked email or phone"
+                  }
+                },
+                "required": [
+                  "walletId",
+                  "identifier"
+                ],
+                "nullable": true
+              },
+              "receiver": {
+                "type": "object",
+                "properties": {
+                  "walletId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Masked email or phone"
+                  }
+                },
+                "required": [
+                  "walletId",
+                  "identifier"
+                ],
+                "nullable": true
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "description": "ISO-8601 UTC timestamp"
+              }
+            },
+            "required": [
+              "id",
+              "reference",
+              "type",
+              "status",
+              "walletId",
+              "source",
+              "destination",
+              "fx",
+              "sender",
+              "receiver",
+              "note",
+              "createdAt"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "data"
+        ]
+      },
+      "SwapDto": {
+        "type": "object",
+        "properties": {
+          "fromCurrency": {
+            "type": "string",
+            "enum": [
+              "cNGN",
+              "cGHS",
+              "cXAF",
+              "USDx",
+              "EURx"
+            ],
+            "description": "Supported stablecoin"
+          },
+          "toCurrency": {
+            "type": "string",
+            "enum": [
+              "cNGN",
+              "cGHS",
+              "cXAF",
+              "USDx",
+              "EURx"
+            ],
+            "description": "Supported stablecoin"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
+            "description": "Positive decimal string, at most 6 decimal places"
+          }
+        },
+        "required": [
+          "fromCurrency",
+          "toCurrency",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "TransferDto": {
+        "type": "object",
+        "properties": {
+          "recipient": {
+            "type": "object",
+            "properties": {
+              "walletId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "email": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 32
+              }
+            },
+            "additionalProperties": false
+          },
+          "sourceCurrency": {
+            "type": "string",
+            "enum": [
+              "cNGN",
+              "cGHS",
+              "cXAF",
+              "USDx",
+              "EURx"
+            ],
+            "description": "Supported stablecoin"
+          },
+          "destinationCurrency": {
+            "type": "string",
+            "enum": [
+              "cNGN",
+              "cGHS",
+              "cXAF",
+              "USDx",
+              "EURx"
+            ],
+            "description": "Supported stablecoin"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
+            "description": "Positive decimal string, at most 6 decimal places"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 140
+          }
+        },
+        "required": [
+          "recipient",
+          "sourceCurrency",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "TransactionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "DEPOSIT",
+                    "SWAP",
+                    "TRANSFER"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "COMPLETED",
+                    "FAILED"
+                  ]
+                },
+                "direction": {
+                  "description": "Relative to the wallet whose history is listed",
+                  "type": "string",
+                  "enum": [
+                    "IN",
+                    "OUT",
+                    "SELF"
+                  ]
+                },
+                "walletId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "amount"
+                  ]
+                },
+                "destination": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "enum": [
+                        "cNGN",
+                        "cGHS",
+                        "cXAF",
+                        "USDx",
+                        "EURx"
+                      ],
+                      "description": "Supported stablecoin"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "description": "Exact ledger value as a decimal string, trailing zeros trimmed"
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "amount"
+                  ]
+                },
+                "fx": {
+                  "type": "object",
+                  "properties": {
+                    "rate": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "LIVE",
+                        "LAST_KNOWN_GOOD",
+                        "STATIC"
+                      ]
+                    },
+                    "snapshotId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "required": [
+                    "rate",
+                    "source",
+                    "snapshotId"
+                  ],
+                  "description": "Present when a currency conversion took place",
+                  "nullable": true
+                },
+                "sender": {
+                  "type": "object",
+                  "properties": {
+                    "walletId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "identifier": {
+                      "type": "string",
+                      "description": "Masked email or phone"
+                    }
+                  },
+                  "required": [
+                    "walletId",
+                    "identifier"
+                  ],
+                  "nullable": true
+                },
+                "receiver": {
+                  "type": "object",
+                  "properties": {
+                    "walletId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "identifier": {
+                      "type": "string",
+                      "description": "Masked email or phone"
+                    }
+                  },
+                  "required": [
+                    "walletId",
+                    "identifier"
+                  ],
+                  "nullable": true
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "description": "ISO-8601 UTC timestamp"
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "type",
+                "status",
+                "walletId",
+                "source",
+                "destination",
+                "fx",
+                "sender",
+                "receiver",
+                "note",
+                "createdAt"
+              ]
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "nextCursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "limit",
+              "hasMore",
+              "nextCursor"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "data",
+          "meta"
+        ]
+      }
+    }
+  }
+}
