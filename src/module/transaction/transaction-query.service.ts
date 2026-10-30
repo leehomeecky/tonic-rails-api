@@ -5,7 +5,10 @@ import {
   TransactionRepository,
   WalletRepository,
 } from '../../shared/global/model/repositories';
-import { TransactionHistoryQueryDto } from '../../shared/global/schemas';
+import {
+  TransactionHistoryQueryDto,
+  parseQueryDate,
+} from '../../shared/global/schemas';
 import { decodeCursor, encodeCursor } from '../../shared/util/cursor.util';
 import { presentTransaction } from './transaction.presenter';
 
@@ -27,8 +30,8 @@ export class TransactionQueryService {
       walletId,
       type: query.type,
       currency: query.currency,
-      from: query.from ? new Date(query.from) : undefined,
-      to: query.to ? new Date(query.to) : undefined,
+      from: query.from ? parseQueryDate(query.from, false) : undefined,
+      to: query.to ? parseQueryDate(query.to, true) : undefined,
       cursor: query.cursor ? decodeCursor(query.cursor) : undefined,
       limit: query.limit,
     });
@@ -54,9 +57,11 @@ export class TransactionQueryService {
 
   /** Accepts the UUID or the human-readable reference (e.g. TR-20261029-7F3K9QAB). */
   async getOne(idOrReference: string) {
+    const isUuid = UUID_PATTERN.test(idOrReference);
+    // References are generated upper-case; accept them in any case.
     const tx = await this.transactions.findByIdOrReference(
-      idOrReference,
-      UUID_PATTERN.test(idOrReference),
+      isUuid ? idOrReference : idOrReference.trim().toUpperCase(),
+      isUuid,
     );
     if (!tx) throw new DomainException(ErrorCodeEnum.TRANSACTION_NOT_FOUND);
     return presentTransaction(tx);

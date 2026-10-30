@@ -764,23 +764,30 @@ Every error has the same shape, with a machine-readable `code`, a `requestId` an
 
 ### 13.2 Error catalogue (`shared/global/errors/*.error.ts`, merged into a single `ErrorMessage` map)
 
-| Code                                                                 | HTTP | When                                                                     |
-| -------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
-| `VALIDATION_FAILED`                                                  | 400  | Zod failure (returns **all** issues in `details`, not only the first)    |
-| `IDEMPOTENCY_KEY_REQUIRED`                                           | 400  | Missing header on money `POST`                                           |
-| `SELF_TRANSFER_NOT_ALLOWED` / `SAME_CURRENCY_SWAP`                   | 400  | Business rule                                                            |
-| `WALLET_NOT_FOUND` / `RECIPIENT_NOT_FOUND` / `TRANSACTION_NOT_FOUND` | 404  | Lookup                                                                   |
-| `WALLET_ALREADY_EXISTS`                                              | 409  | Unique email/phone (`23505`)                                             |
-| `IDEMPOTENCY_REQUEST_IN_PROGRESS`                                    | 409  | Concurrent same-key                                                      |
-| `IDEMPOTENCY_KEY_REUSED`                                             | 422  | Same key, different payload                                              |
-| `INSUFFICIENT_FUNDS`                                                 | 422  | Balance guard / `23514`                                                  |
-| `AMOUNT_TOO_SMALL` / `AMOUNT_LIMIT_EXCEEDED`                         | 422  | Conversion rounds to 0 / cap                                             |
-| `QUOTE_EXPIRED`                                                      | 410  | Stretch                                                                  |
-| `RATE_LIMITED`                                                       | 429  | Throttler                                                                |
-| `FX_UNAVAILABLE`                                                     | 503  | Only if even the static table is missing (should be impossible)          |
-| `INTERNAL_ERROR`                                                     | 500  | Unexpected. The stack trace is logged and never returned                 |
+Messages state exactly what is wrong and how to fix it; errors with specifics (amounts, currencies, limits) build their message at the throw site. The README lists every code with an example message, and `test/e2e/error-messages.e2e-spec.ts` pins the exact text.
 
-`AllExceptionsFilter` handles `DomainException`, `HttpException`, `ZodValidationException` and TypeORM `QueryFailedError` (SQLSTATE mapping via `pg-error.util.ts`). Anything else becomes a 500.
+| Code | HTTP | When |
+|---|---|---|
+| `VALIDATION_FAILED` | 400 | Zod failure. `message` names **every** issue (`amount: must have at most 6 decimal places, got 7`); `details.issues` lists them |
+| `INVALID_JSON` | 400 | Body is not parseable JSON |
+| `INVALID_ID` / `INVALID_PHONE` / `INVALID_CURSOR` | 400 | Malformed identifier, phone or cursor |
+| `IDEMPOTENCY_KEY_REQUIRED` / `IDEMPOTENCY_KEY_INVALID` | 400 | Missing or malformed header on a money `POST` |
+| `SELF_TRANSFER_NOT_ALLOWED` / `SAME_CURRENCY_SWAP` | 400 | Business rule |
+| `WALLET_NOT_FOUND` / `RECIPIENT_NOT_FOUND` / `TRANSACTION_NOT_FOUND` / `ROUTE_NOT_FOUND` | 404 | Lookup |
+| `WALLET_ALREADY_EXISTS` | 409 | Unique email/phone (`23505`) |
+| `IDEMPOTENCY_REQUEST_IN_PROGRESS` | 409 | Same key still running after the 5 s lock timeout |
+| `PAYLOAD_TOO_LARGE` | 413 | Body over 100 kb |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | Body without `Content-Type: application/json` (otherwise it would be silently ignored) |
+| `IDEMPOTENCY_KEY_REUSED` | 422 | Same key, different payload |
+| `IDEMPOTENCY_KEY_EXPIRED` | 422 | Key already executed and its stored result purged; never re-executed |
+| `INSUFFICIENT_FUNDS` | 422 | Balance guard / `23514`; message names the coin, available and required |
+| `AMOUNT_TOO_SMALL` | 422 | Conversion rounds to 0; `details.minimumAmount` is the smallest amount that converts |
+| `AMOUNT_LIMIT_EXCEEDED` | 422 | Over the per-transaction USD cap |
+| `RATE_LIMITED` | 429 | Throttler (catalogue message, not the framework's class name) |
+| `INTERNAL_ERROR` | 500 | Unexpected, including internal invariant violations. Stack and reason are logged, never returned |
+| `SERVICE_UNAVAILABLE` | 503 | Database unreachable (`ECONNREFUSED`, `53300`, `57P01`, …); safe to retry |
+
+`AllExceptionsFilter` handles `DomainException`, `HttpException`, `ZodValidationException`, TypeORM `QueryFailedError` (SQLSTATE mapping via `pg-error.util.ts`) and connection errors. Anything else becomes a 500.
 
 ---
 
@@ -1079,4 +1086,6 @@ Implementation surfaced a few points where the design above was adjusted. Each o
 | Concurrent same-key requests | 409 + `Retry-After` | **Wait, then replay** | The second request blocks on the unique index until the first commits, then returns the stored response. 409 only if the 5 s `lock_timeout` expires. |
 | Purged keys | treated as new | **Never re-executed** | `uq_tx_idempotency (wallet_id, type, idempotency_key)` on `transactions` is permanent; a reused key after purge gets `422 IDEMPOTENCY_KEY_REUSED`. |
 | Transfer → self | design rule | **Also a DB `CHECK`** (`chk_tx_no_self_transfer`) | Defence in depth, like the balance check. |
+| Error contract | Generic messages | **Specific, actionable messages** (`Insufficient cNGN balance: available 1000, required 5000`), new codes `INVALID_JSON`, `UNSUPPORTED_MEDIA_TYPE`, `IDEMPOTENCY_KEY_EXPIRED`, `SERVICE_UNAVAILABLE`; `FX_UNAVAILABLE` removed (unreachable) | Pre-submission audit found messages that hid the real cause (e.g. a numeric amount reported only as "Request validation failed"). |
+| Transaction view | `fx` block only on conversions | Also a top-level `rate` on **every** transaction (`"1"` without conversion) | The brief requires the applied rate on every transfer record. |
 | Test isolation | Testcontainers | Testcontainers, **one migrated DB, suites run in band** | Concurrency tests need real parallelism *within* a test, not across files sharing one database. |

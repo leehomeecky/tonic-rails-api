@@ -134,11 +134,13 @@ export class LedgerService {
       [posting.walletId, posting.currency],
     );
     if (current.length === 0) this.invariant('balance row missing for a debit');
-    throw new DomainException(ErrorCodeEnum.INSUFFICIENT_FUNDS, {
-      currency: posting.currency,
-      available: formatAmount(new Money(current[0].available)),
-      required: formatAmount(posting.amount),
-    });
+    const available = formatAmount(new Money(current[0].available));
+    const required = formatAmount(posting.amount);
+    throw new DomainException(
+      ErrorCodeEnum.INSUFFICIENT_FUNDS,
+      { currency: posting.currency, available, required },
+      `Insufficient ${posting.currency} balance: available ${available}, required ${required}`,
+    );
   }
 
   private async credit(

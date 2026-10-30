@@ -458,6 +458,7 @@
             "in": "query",
             "description": "Supported stablecoin",
             "schema": {
+              "example": "cNGN",
               "type": "string",
               "enum": [
                 "cNGN",
@@ -473,9 +474,18 @@
             "required": false,
             "in": "query",
             "schema": {
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              ]
             }
           },
           {
@@ -483,9 +493,18 @@
             "required": false,
             "in": "query",
             "schema": {
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              ]
             }
           },
           {
@@ -802,7 +821,8 @@
                   "USDx",
                   "EURx"
                 ],
-                "description": "Supported stablecoin"
+                "description": "Supported stablecoin",
+                "example": "cNGN"
               },
               "source": {
                 "type": "string",
@@ -817,7 +837,12 @@
               },
               "refreshedAt": {
                 "type": "string",
-                "description": "ISO-8601 UTC timestamp"
+                "description": "When this service fetched the rates"
+              },
+              "providerUpdatedAt": {
+                "type": "string",
+                "description": "When the provider last updated them (null for the static table)",
+                "nullable": true
               },
               "isStale": {
                 "type": "boolean"
@@ -836,7 +861,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "to": {
                       "type": "string",
@@ -847,7 +873,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "rate": {
                       "type": "string",
@@ -872,6 +899,7 @@
               "source",
               "provider",
               "refreshedAt",
+              "providerUpdatedAt",
               "isStale",
               "rates"
             ]
@@ -886,13 +914,19 @@
         "type": "object",
         "properties": {
           "email": {
+            "example": "ama@example.com",
             "type": "string"
           },
           "phone": {
             "type": "string",
             "minLength": 5,
-            "maxLength": 32
+            "maxLength": 32,
+            "description": "E.164 (+2348031234567) or Nigerian local format (0803 123 4567)",
+            "example": "+2348031234567"
           }
+        },
+        "example": {
+          "email": "ama@example.com"
         },
         "additionalProperties": false
       },
@@ -940,7 +974,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "available": {
                       "type": "string",
@@ -980,6 +1015,7 @@
             "type": "string",
             "enum": [
               "VALIDATION_FAILED",
+              "INVALID_JSON",
               "BAD_REQUEST",
               "INVALID_ID",
               "INVALID_PHONE",
@@ -996,13 +1032,15 @@
               "IDEMPOTENCY_REQUEST_IN_PROGRESS",
               "CONFLICT",
               "PAYLOAD_TOO_LARGE",
+              "UNSUPPORTED_MEDIA_TYPE",
               "IDEMPOTENCY_KEY_REUSED",
+              "IDEMPOTENCY_KEY_EXPIRED",
               "INSUFFICIENT_FUNDS",
               "AMOUNT_TOO_SMALL",
               "AMOUNT_LIMIT_EXCEEDED",
               "RATE_LIMITED",
               "INTERNAL_ERROR",
-              "FX_UNAVAILABLE",
+              "SERVICE_UNAVAILABLE",
               "LEDGER_INVARIANT_VIOLATION"
             ]
           },
@@ -1060,7 +1098,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "available": {
                       "type": "string",
@@ -1133,18 +1172,23 @@
               "USDx",
               "EURx"
             ],
-            "description": "Supported stablecoin"
+            "description": "Supported stablecoin",
+            "example": "cNGN"
           },
           "amount": {
             "type": "string",
-            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
-            "description": "Positive decimal string, at most 6 decimal places"
+            "description": "Positive decimal string with at most 6 decimal places, e.g. \"1500.25\"",
+            "example": "1500.25"
           }
         },
         "required": [
           "currency",
           "amount"
         ],
+        "example": {
+          "currency": "cNGN",
+          "amount": "150000"
+        },
         "additionalProperties": false
       },
       "TransactionResponseDto": {
@@ -1206,7 +1250,8 @@
                       "USDx",
                       "EURx"
                     ],
-                    "description": "Supported stablecoin"
+                    "description": "Supported stablecoin",
+                    "example": "cNGN"
                   },
                   "amount": {
                     "type": "string",
@@ -1230,7 +1275,8 @@
                       "USDx",
                       "EURx"
                     ],
-                    "description": "Supported stablecoin"
+                    "description": "Supported stablecoin",
+                    "example": "cNGN"
                   },
                   "amount": {
                     "type": "string",
@@ -1241,6 +1287,10 @@
                   "currency",
                   "amount"
                 ]
+              },
+              "rate": {
+                "type": "string",
+                "description": "Rate applied: destination units per 1 source unit (\"1\" when no conversion)"
               },
               "fx": {
                 "type": "object",
@@ -1267,7 +1317,7 @@
                   "source",
                   "snapshotId"
                 ],
-                "description": "Present when a currency conversion took place",
+                "description": "Pricing provenance; present when a currency conversion took place",
                 "nullable": true
               },
               "sender": {
@@ -1327,6 +1377,7 @@
               "walletId",
               "source",
               "destination",
+              "rate",
               "fx",
               "sender",
               "receiver",
@@ -1352,7 +1403,8 @@
               "USDx",
               "EURx"
             ],
-            "description": "Supported stablecoin"
+            "description": "Supported stablecoin",
+            "example": "cNGN"
           },
           "toCurrency": {
             "type": "string",
@@ -1363,12 +1415,13 @@
               "USDx",
               "EURx"
             ],
-            "description": "Supported stablecoin"
+            "description": "Supported stablecoin",
+            "example": "cNGN"
           },
           "amount": {
             "type": "string",
-            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
-            "description": "Positive decimal string, at most 6 decimal places"
+            "description": "Positive decimal string with at most 6 decimal places, e.g. \"1500.25\"",
+            "example": "1500.25"
           }
         },
         "required": [
@@ -1376,6 +1429,11 @@
           "toCurrency",
           "amount"
         ],
+        "example": {
+          "fromCurrency": "cNGN",
+          "toCurrency": "USDx",
+          "amount": "15300"
+        },
         "additionalProperties": false
       },
       "TransferDto": {
@@ -1390,12 +1448,15 @@
                 "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
               },
               "email": {
+                "example": "ama@example.com",
                 "type": "string"
               },
               "phone": {
                 "type": "string",
                 "minLength": 5,
-                "maxLength": 32
+                "maxLength": 32,
+                "description": "E.164 (+2348031234567) or Nigerian local format (0803 123 4567)",
+                "example": "+2348031234567"
               }
             },
             "additionalProperties": false
@@ -1409,9 +1470,11 @@
               "USDx",
               "EURx"
             ],
-            "description": "Supported stablecoin"
+            "description": "Supported stablecoin",
+            "example": "cNGN"
           },
           "destinationCurrency": {
+            "description": "Defaults to sourceCurrency; converts when different",
             "type": "string",
             "enum": [
               "cNGN",
@@ -1420,12 +1483,12 @@
               "USDx",
               "EURx"
             ],
-            "description": "Supported stablecoin"
+            "example": "cNGN"
           },
           "amount": {
             "type": "string",
-            "pattern": "^(?!0+(?:\\.0+)?$)\\d{1,18}(?:\\.\\d{1,6})?$",
-            "description": "Positive decimal string, at most 6 decimal places"
+            "description": "Positive decimal string with at most 6 decimal places, e.g. \"1500.25\"",
+            "example": "1500.25"
           },
           "note": {
             "type": "string",
@@ -1437,6 +1500,15 @@
           "sourceCurrency",
           "amount"
         ],
+        "example": {
+          "recipient": {
+            "email": "kofi@example.com"
+          },
+          "sourceCurrency": "cNGN",
+          "destinationCurrency": "cGHS",
+          "amount": "50000",
+          "note": "School fees"
+        },
         "additionalProperties": false
       },
       "TransactionListResponseDto": {
@@ -1500,7 +1572,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "amount": {
                       "type": "string",
@@ -1524,7 +1597,8 @@
                         "USDx",
                         "EURx"
                       ],
-                      "description": "Supported stablecoin"
+                      "description": "Supported stablecoin",
+                      "example": "cNGN"
                     },
                     "amount": {
                       "type": "string",
@@ -1535,6 +1609,10 @@
                     "currency",
                     "amount"
                   ]
+                },
+                "rate": {
+                  "type": "string",
+                  "description": "Rate applied: destination units per 1 source unit (\"1\" when no conversion)"
                 },
                 "fx": {
                   "type": "object",
@@ -1561,7 +1639,7 @@
                     "source",
                     "snapshotId"
                   ],
-                  "description": "Present when a currency conversion took place",
+                  "description": "Pricing provenance; present when a currency conversion took place",
                   "nullable": true
                 },
                 "sender": {
@@ -1621,6 +1699,7 @@
                 "walletId",
                 "source",
                 "destination",
+                "rate",
                 "fx",
                 "sender",
                 "receiver",

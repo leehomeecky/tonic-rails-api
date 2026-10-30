@@ -20,7 +20,10 @@ export interface FxSnapshot {
   id: string;
   provider: string;
   usdRates: Record<IsoCurrencyEnum, Money>;
+  /** When we fetched the rates. */
   fetchedAt: Date;
+  /** When the provider says it last updated them (null for the static table). */
+  providerUpdatedAt: Date | null;
   rateSource: FxSourceEnum;
   isStale: boolean;
 }
@@ -37,6 +40,7 @@ export interface FxRatesView {
   source: FxSourceEnum;
   provider: string;
   refreshedAt: string;
+  providerUpdatedAt: string | null;
   isStale: boolean;
   rates: FxRateView[];
 }

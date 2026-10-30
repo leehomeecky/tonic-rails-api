@@ -4,23 +4,27 @@ import { walletError } from './wallet.error';
 import { transactionError } from './transaction.error';
 import { idempotencyError } from './idempotency.error';
 
+/** Default messages. Errors that carry specifics (amounts, currencies) override them at the throw site. */
 export const ErrorMessage: Readonly<Record<ErrorCodeEnum, string>> = {
   ...walletError,
   ...transactionError,
   ...idempotencyError,
   VALIDATION_FAILED: 'Request validation failed',
+  INVALID_JSON: 'Request body is not valid JSON',
   BAD_REQUEST: 'Bad request',
-  INVALID_ID: 'Identifier must be a valid UUID',
+  INVALID_ID: 'Wallet id must be a valid UUID',
   ROUTE_NOT_FOUND: 'Route not found',
   CONFLICT: 'Request conflicts with the current state of the resource',
-  PAYLOAD_TOO_LARGE: 'Request body is too large',
-  RATE_LIMITED: 'Too many requests, slow down',
-  INTERNAL_ERROR: 'Oops!! internal server error',
-  FX_UNAVAILABLE: 'FX rates are temporarily unavailable',
+  PAYLOAD_TOO_LARGE: 'Request body is too large (limit 100kb)',
+  UNSUPPORTED_MEDIA_TYPE: 'Content-Type must be application/json',
+  RATE_LIMITED: 'Too many requests; slow down and retry shortly',
+  INTERNAL_ERROR: 'Internal server error',
+  SERVICE_UNAVAILABLE: 'Service temporarily unavailable; please retry',
 };
 
 export const ErrorStatus: Readonly<Record<ErrorCodeEnum, HttpStatus>> = {
   VALIDATION_FAILED: HttpStatus.BAD_REQUEST,
+  INVALID_JSON: HttpStatus.BAD_REQUEST,
   BAD_REQUEST: HttpStatus.BAD_REQUEST,
   INVALID_ID: HttpStatus.BAD_REQUEST,
   INVALID_PHONE: HttpStatus.BAD_REQUEST,
@@ -37,12 +41,14 @@ export const ErrorStatus: Readonly<Record<ErrorCodeEnum, HttpStatus>> = {
   IDEMPOTENCY_REQUEST_IN_PROGRESS: HttpStatus.CONFLICT,
   CONFLICT: HttpStatus.CONFLICT,
   PAYLOAD_TOO_LARGE: HttpStatus.PAYLOAD_TOO_LARGE,
+  UNSUPPORTED_MEDIA_TYPE: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
   IDEMPOTENCY_KEY_REUSED: HttpStatus.UNPROCESSABLE_ENTITY,
+  IDEMPOTENCY_KEY_EXPIRED: HttpStatus.UNPROCESSABLE_ENTITY,
   INSUFFICIENT_FUNDS: HttpStatus.UNPROCESSABLE_ENTITY,
   AMOUNT_TOO_SMALL: HttpStatus.UNPROCESSABLE_ENTITY,
   AMOUNT_LIMIT_EXCEEDED: HttpStatus.UNPROCESSABLE_ENTITY,
   RATE_LIMITED: HttpStatus.TOO_MANY_REQUESTS,
   INTERNAL_ERROR: HttpStatus.INTERNAL_SERVER_ERROR,
-  FX_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
+  SERVICE_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
   LEDGER_INVARIANT_VIOLATION: HttpStatus.INTERNAL_SERVER_ERROR,
 };

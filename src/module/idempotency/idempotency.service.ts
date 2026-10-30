@@ -42,6 +42,7 @@ class ClaimLostError extends Error {}
 /** Outcomes of these codes describe the key itself, not the request, so they are never stored. */
 const NON_RECORDABLE = new Set<ErrorCodeEnum>([
   ErrorCodeEnum.IDEMPOTENCY_KEY_REUSED,
+  ErrorCodeEnum.IDEMPOTENCY_KEY_EXPIRED,
   ErrorCodeEnum.IDEMPOTENCY_REQUEST_IN_PROGRESS,
 ]);
 
@@ -151,7 +152,7 @@ export class IdempotencyService {
       // A transaction row already carries this key (e.g. the key row expired and was purged):
       // never execute twice.
       if (isPgError(error, PgErrorCode.UNIQUE_VIOLATION, 'uq_tx_idempotency')) {
-        throw new DomainException(ErrorCodeEnum.IDEMPOTENCY_KEY_REUSED);
+        throw new DomainException(ErrorCodeEnum.IDEMPOTENCY_KEY_EXPIRED);
       }
       if (
         error instanceof DomainException &&

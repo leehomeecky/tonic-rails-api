@@ -10,6 +10,7 @@ import { AppConfig } from './shared/config/env/app-config';
 import { DbModule } from './shared/config/db/db.module';
 import { AppCacheModule } from './shared/config/cache/cache.module';
 import { REQUEST_ID_HEADER } from './shared/global/constants';
+import { JsonContentTypeGuard } from './shared/global/guards/json-content-type.guard';
 import { AllExceptionsFilter } from './shared/global/errors/filters/all-exceptions.filter';
 import { WalletModule } from './module/wallet/wallet.module';
 import { FxModule } from './module/fx/fx.module';
@@ -73,6 +74,7 @@ import { HealthModule } from './module/health/health.module';
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JsonContentTypeGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })

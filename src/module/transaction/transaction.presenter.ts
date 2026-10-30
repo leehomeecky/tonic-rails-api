@@ -63,6 +63,8 @@ export function presentTransaction(
       currency: tx.destinationCurrency,
       amount: formatAmount(tx.destinationAmount),
     },
+    // Always present: the rate applied (1 when no conversion took place).
+    rate: formatRate(tx.fxRate),
     fx:
       converted && tx.fxSource && tx.fxSnapshotId
         ? {

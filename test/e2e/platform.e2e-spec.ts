@@ -28,11 +28,18 @@ describe('Platform behaviour', () => {
     expect(Date.parse(res.body.timestamp)).not.toBeNaN();
   });
 
-  it('rejects malformed JSON with 400', async () => {
+  it('rejects malformed JSON with 400 INVALID_JSON', async () => {
     const res = await request(ctx.http)
       .post('/api/v1/wallets')
       .set('content-type', 'application/json')
       .send('{"email":')
+      .expect(400);
+    expect(res.body.code).toBe('INVALID_JSON');
+  });
+
+  it('keeps the framework message for a malformed URL escape', async () => {
+    const res = await request(ctx.http)
+      .get('/api/v1/transactions/%E0%A4%A')
       .expect(400);
     expect(res.body.code).toBe('BAD_REQUEST');
   });

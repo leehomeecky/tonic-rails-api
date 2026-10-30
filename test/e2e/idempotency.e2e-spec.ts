@@ -151,7 +151,7 @@ describe('Idempotency', () => {
     await ctx.dataSource.query('DELETE FROM idempotency_keys');
 
     const res = await api.deposit(ctx.http, walletId, body, key).expect(422);
-    expect(res.body.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    expect(res.body.code).toBe('IDEMPOTENCY_KEY_EXPIRED');
     expect(await balanceOf(ctx.http, walletId, 'USDx')).toBe('5');
   });
 });

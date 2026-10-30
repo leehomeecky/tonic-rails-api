@@ -163,6 +163,72 @@ describe('FxService', () => {
     );
   });
 
+  it('treats a malformed Redis entry as a cache miss instead of failing', async () => {
+    const primary = live(() => Promise.resolve(LIVE_QUOTE));
+    const { service, redis } = build({ primary });
+    redis.getJson.mockResolvedValue({
+      id: 'x',
+      source: 'LIVE',
+      usdRates: { USD: 'abc' },
+    } as never);
+
+    const snapshot = await service.getSnapshot();
+    expect(snapshot.rateSource).toBe(FxSourceEnum.LIVE);
+    expect(primary.fetchUsdRates).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes when the provider itself last updated the rates', async () => {
+    const providerTimestamp = new Date('2026-10-29T00:00:00Z');
+    const { service } = build({
+      primary: live(() =>
+        Promise.resolve({ ...LIVE_QUOTE, providerTimestamp }),
+      ),
+    });
+    const snapshot = await service.getSnapshot();
+    expect(service.ratesView(snapshot).providerUpdatedAt).toBe(
+      providerTimestamp.toISOString(),
+    );
+  });
+
+  it('computes the smallest convertible amount, including awkward ratios', async () => {
+    const { service } = build({
+      primary: live(() =>
+        Promise.resolve({
+          ...LIVE_QUOTE,
+          usdRates: { ...LIVE_QUOTE.usdRates, NGN: '1530.123457' },
+        }),
+      ),
+    });
+    const snapshot = await service.getSnapshot();
+    const minimum = service.minimumConvertible(
+      snapshot,
+      CurrencyEnum.cNGN,
+      CurrencyEnum.USDx,
+    );
+    expect(minimum.toFixed()).toBe('0.001531');
+    expect(
+      service
+        .convert(snapshot, CurrencyEnum.cNGN, CurrencyEnum.USDx, minimum)
+        .toFixed(),
+    ).toBe('0.000001');
+    expect(
+      service
+        .convert(
+          snapshot,
+          CurrencyEnum.cNGN,
+          CurrencyEnum.USDx,
+          minimum.minus('0.000001'),
+        )
+        .isZero(),
+    ).toBe(true);
+    // Converting into a weaker currency: one micro-unit is always enough.
+    expect(
+      service
+        .minimumConvertible(snapshot, CurrencyEnum.USDx, CurrencyEnum.cNGN)
+        .toFixed(),
+    ).toBe('0.000001');
+  });
+
   it('converts with the snapshot and values balances in USD', async () => {
     const { service } = build({
       primary: live(() => Promise.resolve(LIVE_QUOTE)),

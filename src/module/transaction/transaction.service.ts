@@ -230,10 +230,14 @@ export class TransactionService {
     const rate = this.fx.rate(snapshot, from, to);
     const destinationAmount = this.fx.convert(snapshot, from, to, amount);
     if (destinationAmount.isZero()) {
-      throw new DomainException(ErrorCodeEnum.AMOUNT_TOO_SMALL, {
-        currency: to,
-        rate: rate.toFixed(),
-      });
+      const minimum = formatAmount(
+        this.fx.minimumConvertible(snapshot, from, to),
+      );
+      throw new DomainException(
+        ErrorCodeEnum.AMOUNT_TOO_SMALL,
+        { currency: from, minimumAmount: minimum, destinationCurrency: to },
+        `${formatAmount(amount)} ${from} converts to less than 0.000001 ${to}; the minimum is ${minimum} ${from}`,
+      );
     }
     return { rate, destinationAmount, snapshot };
   }
@@ -246,10 +250,13 @@ export class TransactionService {
     const max = new Money(this.config.maxTransactionAmountUsd);
     const usd = this.fx.toUsd(snapshot, currency, amount);
     if (usd.gt(max)) {
-      throw new DomainException(ErrorCodeEnum.AMOUNT_LIMIT_EXCEEDED, {
-        maxUsd: formatAmount(max),
-        amountUsd: formatAmount(usd),
-      });
+      const maxUsd = formatAmount(max);
+      const amountUsd = formatAmount(usd);
+      throw new DomainException(
+        ErrorCodeEnum.AMOUNT_LIMIT_EXCEEDED,
+        { maxUsd, amountUsd },
+        `Amount is worth ${amountUsd} USD, above the ${maxUsd} USD limit per transaction`,
+      );
     }
   }
 

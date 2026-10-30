@@ -1,5 +1,6 @@
 import {
   ArgumentsHost,
+  BadRequestException,
   Catch,
   ExceptionFilter,
   HttpException,
@@ -9,7 +10,7 @@ import {
 import { Request, Response } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
 import { ZodError } from 'zod';
-import { IDEMPOTENT_REPLAYED_HEADER } from '../../constants';
+import { IDEMPOTENT_REPLAYED_HEADER, REQUEST_ID_HEADER } from '../../constants';
 import { ErrorCodeEnum } from '../../enums';
 import { DomainException, ErrorDetails } from '../domain.exception';
 import { ErrorMessage, ErrorStatus } from '../message.error';
@@ -30,10 +31,27 @@ const HTTP_STATUS_TO_CODE: Partial<Record<number, ErrorCodeEnum>> = {
   [HttpStatus.TOO_MANY_REQUESTS]: ErrorCodeEnum.RATE_LIMITED,
 };
 
+/** Codes whose framework message is useful to the client (e.g. "Cannot DELETE /api/v1/wallets"). */
+const KEEP_FRAMEWORK_MESSAGE = new Set<ErrorCodeEnum>([
+  ErrorCodeEnum.ROUTE_NOT_FOUND,
+  ErrorCodeEnum.BAD_REQUEST,
+]);
+
+/** Errors meaning Postgres is unreachable or refusing connections: retryable, not a bug. */
+const DB_UNAVAILABLE_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  '57P01', // admin_shutdown
+  '57P03', // cannot_connect_now
+  '53300', // too_many_connections
+]);
+
 /**
  * Single place that turns any error into the API error shape:
  * { statusCode, code, message, details?, path, requestId, timestamp }.
- * Unexpected errors are logged with their stack and returned as INTERNAL_ERROR.
+ * 500s never carry internal details to the client; they are logged instead.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -64,25 +82,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
       response.setHeader(IDEMPOTENT_REPLAYED_HEADER, 'true');
     }
 
+    // Body-parse failures happen before the logger assigns request.id; fall back to the client's id.
+    const clientRequestId = request.headers[REQUEST_ID_HEADER];
     response.status(body.statusCode).json({
       ...body,
       path: request.url,
-      requestId: request.id,
+      requestId:
+        request.id ??
+        (typeof clientRequestId === 'string' ? clientRequestId : undefined),
       timestamp: new Date().toISOString(),
     });
   }
 
   private toBody(exception: unknown): ErrorBody {
-    if (exception instanceof DomainException) return exception.toPayload();
+    if (exception instanceof DomainException) {
+      const payload = exception.toPayload();
+      // An internal invariant must not leak its reason; it is logged above.
+      return exception.getStatus() >= 500
+        ? this.catalogue(ErrorCodeEnum.INTERNAL_ERROR)
+        : payload;
+    }
 
     if (exception instanceof ZodValidationException) {
-      const issues = (exception.getZodError() as ZodError).issues.map(
-        (issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        }),
-      );
-      return this.catalogue(ErrorCodeEnum.VALIDATION_FAILED, { issues });
+      return this.validationBody(exception.getZodError() as ZodError);
     }
 
     if (isPgError(exception, PgErrorCode.CHECK_VIOLATION)) {
@@ -91,6 +113,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
     if (isPgError(exception, PgErrorCode.UNIQUE_VIOLATION)) {
       return this.catalogue(ErrorCodeEnum.CONFLICT);
+    }
+    if (this.isDatabaseUnavailable(exception)) {
+      return this.catalogue(ErrorCodeEnum.SERVICE_UNAVAILABLE);
+    }
+
+    // Nest maps body-parser SyntaxErrors to BadRequestException(err.message);
+    // V8's JSON parse messages always mention JSON.
+    if (
+      exception instanceof BadRequestException &&
+      exception.message.includes('JSON')
+    ) {
+      return this.catalogue(ErrorCodeEnum.INVALID_JSON, {
+        reason: exception.message,
+      });
     }
 
     if (exception instanceof HttpException) {
@@ -103,11 +139,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return {
         statusCode,
         code,
-        message: statusCode >= 500 ? ErrorMessage[code] : exception.message,
+        message: KEEP_FRAMEWORK_MESSAGE.has(code)
+          ? exception.message
+          : ErrorMessage[code],
       };
     }
 
-    // body-parser errors (too large, malformed JSON) are plain errors with a 4xx status.
+    // body-parser errors that bypass Nest's mapping (e.g. payload too large) carry a 4xx status.
     const status = (exception as { status?: unknown } | null)?.status;
     if (typeof status === 'number' && status >= 400 && status < 500) {
       const code = HTTP_STATUS_TO_CODE[status] ?? ErrorCodeEnum.BAD_REQUEST;
@@ -115,6 +153,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     return this.catalogue(ErrorCodeEnum.INTERNAL_ERROR);
+  }
+
+  /** The message names every problem ("amount: is required; currency: …"), details lists them. */
+  private validationBody(error: ZodError): ErrorBody {
+    const issues = error.issues.map((issue) => ({
+      path: issue.path.length ? issue.path.join('.') : 'body',
+      message: issue.message,
+    }));
+    return {
+      statusCode: ErrorStatus[ErrorCodeEnum.VALIDATION_FAILED],
+      code: ErrorCodeEnum.VALIDATION_FAILED,
+      message: `Validation failed: ${issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`,
+      details: { issues },
+    };
+  }
+
+  private isDatabaseUnavailable(exception: unknown): boolean {
+    if (!(exception instanceof Error)) return false;
+    const candidates = [
+      exception,
+      (exception as { driverError?: unknown }).driverError,
+      exception.cause,
+    ];
+    return candidates.some((candidate) => {
+      const code = (candidate as { code?: unknown } | undefined)?.code;
+      return typeof code === 'string' && DB_UNAVAILABLE_CODES.has(code);
+    });
   }
 
   private catalogue(code: ErrorCodeEnum, details?: ErrorDetails): ErrorBody {

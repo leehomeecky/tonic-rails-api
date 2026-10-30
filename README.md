@@ -37,7 +37,7 @@ That one command starts PostgreSQL 16, Redis 7 and the API. **Migrations and see
 | OpenAPI JSON | `http://127.0.0.1:9000/docs-json` (committed copy: `docs/openapi.json`) |
 | Health | `GET /health/live`, `GET /health/ready` |
 
-> **Windows / Docker Desktop:** use `127.0.0.1` rather than `localhost`. `localhost` can resolve to IPv6 `::1`, which Docker Desktop does not always forward.
+> **If `localhost:9000` resets the connection on Windows,** use `127.0.0.1:9000`. `localhost` tries IPv6 `::1` first, and a leftover WSL port relay (`wslrelay`) can be holding `[::1]:9000`. Check with `Get-NetTCPConnection -LocalPort 9000`.
 
 **Without Docker for the API** (Postgres and Redis still need to be running):
 
@@ -83,8 +83,8 @@ A document store could model wallets, but atomic multi-document updates, databas
 
 ```bash
 yarn install
-yarn test            # unit + e2e, the full suite (126 tests)
-yarn test:cov        # same, with coverage (~92% lines)
+yarn test            # unit + e2e, the full suite (169 tests)
+yarn test:cov        # same, with coverage (~93% lines)
 ```
 
 **Requirement: Docker.** The e2e tests run against a **real PostgreSQL** that Testcontainers starts and throws away automatically. No setup is needed beyond a running Docker daemon. Testing against Postgres rather than mocks is deliberate, because the guarantees under test (row locks, `CHECK` constraints, unique indexes) live in the database.
@@ -112,7 +112,9 @@ Other commands: `yarn test:unit` (fast, no Docker), `yarn test:e2e`, `yarn lint`
 | `history` | Newest first, sent and received, filters, cursor pagination without gaps or duplicates |
 | `fx` | Live rates, failing provider falls back to last-known-good, then to static |
 | `ledger-invariants` | **Property-based** (fast-check): random operation sequences never break double entry, balance = ledger, or non-negativity |
-| unit | Money maths, posting templates, FX resolution chain (retry, circuit breaker, single-flight), provider parsing, cursors, hashing |
+| `error-messages` | The client-facing error contract: exact code **and** message for every validation and business failure, 415 for non-JSON bodies, canonical balance order, `rate` on every transaction |
+| `openapi-examples` | Replays the request examples in `docs/openapi.json` in order, so Swagger's "Try it out" works on the first click |
+| unit | Money maths, posting templates, FX resolution chain (retry, circuit breaker, single-flight, corrupt-cache tolerance, minimum convertible amount), provider parsing, exception filter mappings (429, 503, hidden 500 details), cursors, hashing |
 
 After every e2e test, a SQL check asserts that the ledger nets to zero per currency, that every balance equals the sum of its ledger entries, and that no user balance is negative.
 
@@ -168,7 +170,7 @@ curl -X POST http://127.0.0.1:9000/api/v1/wallets/$WALLET/deposits \
     "type": "DEPOSIT", "status": "COMPLETED", "walletId": "6b0f…",
     "source":      { "currency": "cNGN", "amount": "150000" },
     "destination": { "currency": "cNGN", "amount": "150000" },
-    "fx": null, "sender": null, "receiver": null, "note": null,
+    "rate": "1", "fx": null, "sender": null, "receiver": null, "note": null,
     "createdAt": "2026-10-29T10:16:40.501Z"
   }
 }
@@ -189,6 +191,7 @@ curl -X POST http://127.0.0.1:9000/api/v1/wallets/$WALLET/swaps \
     "type": "SWAP",
     "source":      { "currency": "cNGN", "amount": "15300" },
     "destination": { "currency": "USDx", "amount": "10.2" },
+    "rate": "0.000666666666666666",
     "fx": { "rate": "0.000666666666666666", "source": "STATIC",
             "snapshotId": "00000000-0000-4000-8000-0000000000f1" },
     "…": "…"
@@ -201,7 +204,8 @@ Swapping more than you hold:
 ```json
 422 Unprocessable Entity
 {
-  "statusCode": 422, "code": "INSUFFICIENT_FUNDS", "message": "Insufficient balance",
+  "statusCode": 422, "code": "INSUFFICIENT_FUNDS",
+  "message": "Insufficient cNGN balance: available 134700, required 999999",
   "details": { "currency": "cNGN", "available": "134700", "required": "999999" },
   "path": "/api/v1/wallets/6b0f…/swaps", "requestId": "c3a1…", "timestamp": "…"
 }
@@ -227,6 +231,7 @@ curl -X POST http://127.0.0.1:9000/api/v1/wallets/$WALLET/transfers \
     "receiver": { "walletId": "91c2…", "identifier": "+233*****4567" },
     "source":      { "currency": "cNGN", "amount": "50000" },
     "destination": { "currency": "cGHS", "amount": "500" },
+    "rate": "0.01",
     "fx": { "rate": "0.01", "source": "STATIC", "snapshotId": "00000000-…-0000000000f1" },
     "note": "School fees",
     "createdAt": "2026-10-29T10:18:05.214Z"
@@ -269,7 +274,7 @@ curl  http://127.0.0.1:9000/api/v1/transactions/TR-20261029-7F3K9QAB   # by refe
 
 - **Newest first**, keyset-paginated: `meta: { limit, hasMore, nextCursor }`. Pages stay stable while new transactions arrive.
 - Includes transfers the wallet **received**. Each item has `direction`: `IN`, `OUT` or `SELF` (swap), relative to the wallet being listed.
-- Filters: `type` (`DEPOSIT|SWAP|TRANSFER`), `currency` (matches the source **or** destination leg), `from`/`to` (ISO timestamps), `limit` (1–100, default 20).
+- Filters: `type` (`DEPOSIT|SWAP|TRANSFER`), `currency` (matches the source **or** destination leg), `from`/`to` (a date such as `2026-10-29`, where a date-only `to` includes that whole day, or a full ISO date-time), `limit` (1–100, default 20).
 
 ### 7. Current FX rates
 
@@ -281,7 +286,8 @@ curl http://127.0.0.1:9000/api/v1/fx/rates
   "message": "Rates fetched",
   "data": {
     "base": "USDx", "source": "LIVE", "provider": "open.er-api.com",
-    "refreshedAt": "2026-10-29T17:48:56.819Z", "isStale": false,
+    "refreshedAt": "2026-10-29T17:48:56.819Z", "providerUpdatedAt": "2026-10-29T00:02:31.000Z",
+    "isStale": false,
     "rates": [
       { "from": "cNGN", "to": "cGHS", "rate": "0.008646261370309442", "refreshedAt": "2026-10-29T17:48:56.819Z" },
       { "from": "cNGN", "to": "USDx", "rate": "0.00074281132014264",  "refreshedAt": "2026-10-29T17:48:56.819Z" },
@@ -293,10 +299,45 @@ curl http://127.0.0.1:9000/api/v1/fx/rates
 
 ### Errors
 
-Every error has the same shape: `{ statusCode, code, message, details?, path, requestId, timestamp }`. Clients branch on `code`:
+Every error has one shape: `{ statusCode, code, message, details?, path, requestId, timestamp }`. Clients branch on `code`. `message` says exactly what went wrong and how to fix it, and `details` carries the machine-readable specifics.
 
-| Code | HTTP |
-|---|---|
+```json
+400 Bad Request
+{
+  "statusCode": 400, "code": "VALIDATION_FAILED",
+  "message": "Validation failed: amount: must be a string such as \"1500.25\", not a number; send amounts as strings to avoid floating-point rounding",
+  "details": { "issues": [ { "path": "amount", "message": "must be a string such as \"1500.25\", not a number; …" } ] },
+  "path": "/api/v1/wallets/6b0f…/swaps", "requestId": "c3a1…", "timestamp": "…"
+}
+```
+
+| Code | HTTP | When | Example message |
+|---|---|---|---|
+| `VALIDATION_FAILED` | 400 | Body or query fails validation; **every** issue is listed | `Validation failed: fromCurrency: is required; amount: must have at most 6 decimal places, got 7` |
+| `INVALID_JSON` | 400 | Body is not parseable JSON | `Request body is not valid JSON` |
+| `INVALID_ID` | 400 | Wallet id in the path is not a UUID | `Wallet id must be a valid UUID` |
+| `INVALID_PHONE` | 400 | Phone cannot be parsed | `Phone number is not valid. Numbers without a country code are read as Nigerian; …` |
+| `INVALID_CURSOR` | 400 | Tampered pagination cursor | `Pagination cursor is not valid; pass meta.nextCursor …` |
+| `IDEMPOTENCY_KEY_REQUIRED` / `_INVALID` | 400 | Header missing / wrong format | `Idempotency-Key header is required for deposits, swaps and transfers` |
+| `SAME_CURRENCY_SWAP` | 400 | Swap into the same coin | `fromCurrency and toCurrency must be different` |
+| `SELF_TRANSFER_NOT_ALLOWED` | 400 | Recipient is the sender | `A wallet cannot transfer to itself; use a swap to change currency` |
+| `BAD_REQUEST` | 400 | Other malformed requests (e.g. a broken `%` escape in the URL) | framework message |
+| `WALLET_NOT_FOUND` / `RECIPIENT_NOT_FOUND` / `TRANSACTION_NOT_FOUND` | 404 | Unknown id (system ledger accounts are never exposed) | `Recipient wallet not found` |
+| `ROUTE_NOT_FOUND` | 404 | No such route | `Cannot DELETE /api/v1/wallets/…` |
+| `WALLET_ALREADY_EXISTS` | 409 | Email/phone already has a wallet | `A wallet already exists for this email or phone` |
+| `IDEMPOTENCY_REQUEST_IN_PROGRESS` | 409 | Same key still processing after 5 s | `… is still being processed; retry shortly` |
+| `PAYLOAD_TOO_LARGE` | 413 | Body over 100 kb | `Request body is too large (limit 100kb)` |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | Body sent without `Content-Type: application/json` | `Content-Type must be application/json` |
+| `INSUFFICIENT_FUNDS` | 422 | Debit larger than the balance | `Insufficient cNGN balance: available 1000, required 5000` |
+| `AMOUNT_TOO_SMALL` | 422 | Conversion would round to zero; `details.minimumAmount` gives the smallest that works | `0.000001 cNGN converts to less than 0.000001 USDx; the minimum is 0.0015 cNGN` |
+| `AMOUNT_LIMIT_EXCEEDED` | 422 | Over the per-transaction USD cap | `Amount is worth 2000000 USD, above the 1000000 USD limit per transaction` |
+| `IDEMPOTENCY_KEY_REUSED` | 422 | Same key, different body | `This Idempotency-Key was already used with a different request body; …` |
+| `IDEMPOTENCY_KEY_EXPIRED` | 422 | Key already executed and its stored result was purged (it is **never** re-executed) | `… its stored result has expired; use a new key for a new request` |
+| `RATE_LIMITED` | 429 | Over the per-IP request rate | `Too many requests; slow down and retry shortly` |
+| `INTERNAL_ERROR` | 500 | Unexpected failure; stack and reason are logged, never returned | `Internal server error` |
+| `SERVICE_UNAVAILABLE` | 503 | Database unreachable; safe to retry | `Service temporarily unavailable; please retry` |
+
+---|---|
 | `VALIDATION_FAILED` (with every issue in `details.issues`), `INVALID_ID`, `INVALID_PHONE`, `INVALID_CURSOR`, `IDEMPOTENCY_KEY_REQUIRED`, `IDEMPOTENCY_KEY_INVALID`, `SAME_CURRENCY_SWAP`, `SELF_TRANSFER_NOT_ALLOWED`, `BAD_REQUEST` | 400 |
 | `WALLET_NOT_FOUND`, `RECIPIENT_NOT_FOUND`, `TRANSACTION_NOT_FOUND`, `ROUTE_NOT_FOUND` | 404 |
 | `WALLET_ALREADY_EXISTS`, `IDEMPOTENCY_REQUEST_IN_PROGRESS` | 409 |

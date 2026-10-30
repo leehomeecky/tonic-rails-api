@@ -6,7 +6,12 @@ export const fxRatesViewSchema = z.object({
   base: currencySchema,
   source: z.enum(FxSourceEnum),
   provider: z.string(),
-  refreshedAt: isoDateSchema,
+  refreshedAt: isoDateSchema.describe('When this service fetched the rates'),
+  providerUpdatedAt: isoDateSchema
+    .nullable()
+    .describe(
+      'When the provider last updated them (null for the static table)',
+    ),
   isStale: z.boolean(),
   rates: z.array(
     z.object({

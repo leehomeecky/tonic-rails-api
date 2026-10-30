@@ -15,10 +15,18 @@ export const createWalletSchema = z
     phone: phoneSchema.optional(),
   })
   .strict()
-  .refine((body) => (body.email === undefined) !== (body.phone === undefined), {
-    message: 'Provide exactly one of email or phone',
-    path: ['email'],
-  });
+  .superRefine((body, ctx) => {
+    if (body.email !== undefined && body.phone !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'provide either email or phone, not both',
+      });
+    } else if (body.email === undefined && body.phone === undefined) {
+      ctx.addIssue({ code: 'custom', message: 'email or phone is required' });
+    }
+  })
+  // A whole-body example, so Swagger's "Try it out" does not send both identifiers.
+  .meta({ example: { email: 'ama@example.com' } });
 
 export const balanceSchema = z.object({
   currency: currencySchema,

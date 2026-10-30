@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { z } from 'zod';
 import { AppConfig } from '../../shared/config/env/app-config';
 import { RedisService } from '../../shared/config/cache/redis.service';
 import {
@@ -9,6 +10,7 @@ import {
   FX_CIRCUIT_FAILURE_THRESHOLD,
   FX_CIRCUIT_OPEN_MS,
   FX_PROVIDER_MAX_ATTEMPTS,
+  MONEY_SCALE,
   PRIMARY_FX_PROVIDER,
   STATIC_FX_SNAPSHOT_ID,
   USD_PEGGED_CURRENCY,
@@ -34,6 +36,30 @@ import {
   formatRate,
 } from '../../shared/util/money.util';
 import { CachedFxSnapshot, FxRatesView, FxSnapshot } from './fx.types';
+
+// One predicate: Zod keeps running refinements after a failed check, so the
+// format test must guard the Money constructor or bad input would throw.
+const positiveDecimal = z
+  .string()
+  .refine(
+    (value) => /^d+(.d+)?$/.test(value) && new Money(value).gt(0),
+    'must be a positive decimal string',
+  );
+
+const cachedSnapshotSchema: z.ZodType<CachedFxSnapshot> = z.object({
+  id: z.string().min(1),
+  source: z.enum([FxSourceEnum.LIVE, FxSourceEnum.STATIC]),
+  provider: z.string(),
+  usdRates: z.object({
+    USD: positiveDecimal,
+    NGN: positiveDecimal,
+    GHS: positiveDecimal,
+    XAF: positiveDecimal,
+    EUR: positiveDecimal,
+  }),
+  providerTimestamp: z.iso.datetime().nullable(),
+  fetchedAt: z.iso.datetime(),
+});
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -98,6 +124,27 @@ export class FxService {
     );
   }
 
+  /**
+   * Smallest source amount whose conversion is at least one micro-unit:
+   * ceil6(0.000001 × usd(from) / usd(to)), nudged up if division rounding left it short.
+   */
+  minimumConvertible(
+    snapshot: FxSnapshot,
+    from: CurrencyEnum,
+    to: CurrencyEnum,
+  ): Money {
+    const microUnit = new Money(1).div(10 ** MONEY_SCALE);
+    let minimum = microUnit
+      .mul(snapshot.usdRates[CURRENCY_TO_ISO[from]])
+      .div(snapshot.usdRates[CURRENCY_TO_ISO[to]])
+      .toDecimalPlaces(MONEY_SCALE, Money.ROUND_UP);
+    if (minimum.lt(microUnit)) minimum = microUnit;
+    if (this.convert(snapshot, from, to, minimum).isZero()) {
+      minimum = minimum.plus(microUnit);
+    }
+    return minimum;
+  }
+
   toUsd(snapshot: FxSnapshot, currency: CurrencyEnum, amount: Money): Money {
     return this.convert(snapshot, currency, USD_PEGGED_CURRENCY, amount);
   }
@@ -117,6 +164,7 @@ export class FxService {
       source: snapshot.rateSource,
       provider: snapshot.provider,
       refreshedAt,
+      providerUpdatedAt: snapshot.providerUpdatedAt?.toISOString() ?? null,
       isStale: snapshot.isStale,
       rates,
     };
@@ -126,7 +174,13 @@ export class FxService {
     if (this.memo && this.memo.expiresAt > Date.now())
       return this.memo.snapshot;
 
-    const shared = await this.redis.getJson<CachedFxSnapshot>(FX_CACHE_KEY);
+    // Anything read back from Redis is validated: a corrupt entry is a miss, never a 500.
+    const raw = await this.redis.getJson<unknown>(FX_CACHE_KEY);
+    const parsed = raw === null ? null : cachedSnapshotSchema.safeParse(raw);
+    if (parsed && !parsed.success) {
+      this.logger.warn('Ignoring malformed FX snapshot in Redis');
+    }
+    const shared = parsed?.success ? parsed.data : null;
     if (shared) {
       this.remember(shared);
       return shared;
@@ -289,6 +343,9 @@ export class FxService {
       provider: cached.provider,
       usdRates,
       fetchedAt,
+      providerUpdatedAt: cached.providerTimestamp
+        ? new Date(cached.providerTimestamp)
+        : null,
       rateSource,
       isStale: rateSource !== FxSourceEnum.LIVE,
     };

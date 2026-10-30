@@ -98,6 +98,9 @@ describe('FX rates', () => {
         isStale: false,
         provider: 'fake-live',
       });
+      // Both timestamps: when we fetched, and when the provider last updated.
+      expect(Date.parse(rates.body.data.refreshedAt)).not.toBeNaN();
+      expect(Date.parse(rates.body.data.providerUpdatedAt)).not.toBeNaN();
 
       const walletId = await fundedWallet(ctx.http, { cNGN: '16000' });
       const swap = await api

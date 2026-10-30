@@ -16,7 +16,7 @@ import {
 import { ZERO, formatAmount } from '../../shared/util/money.util';
 import { PgErrorCode, isPgError } from '../../shared/util/pg-error.util';
 import { FxService } from '../fx/fx.service';
-import { presentWallet } from './wallet.presenter';
+import { presentWallet, sortBalances } from './wallet.presenter';
 
 @Injectable()
 export class WalletService {
@@ -80,7 +80,7 @@ export class WalletService {
     ]);
 
     let totalUsd = ZERO;
-    const valued = balances.map((balance) => {
+    const valued = sortBalances(balances).map((balance) => {
       const usdValue = this.fx.toUsd(
         snapshot,
         balance.currency,
